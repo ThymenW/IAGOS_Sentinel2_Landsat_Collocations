@@ -95,12 +95,14 @@ def create_met_from_iagos(iagos_file_path: str) -> MetDataset:
     # Convert xarray dataset to DataFrame and flatten index
     df_raw = ds.to_dataframe().reset_index()
 
-    if "air_temp_P1" in df_raw.columns:
-        df_raw = df_raw.rename(columns={"air_temp_P1": "air_temperature"})
-    elif "air_temp_AC" in df_raw.columns:
-        df_raw = df_raw.rename(columns={"air_temp_AC": "air_temperature"})
-    else:
-        raise ValueError("No air temperature column found in IAGOS data")
+    # if "air_temp_P1" in df_raw.columns:
+    #     df_raw = df_raw.rename(columns={"air_temp_P1": "air_temperature"})
+    # elif "air_temp_AC" in df_raw.columns:
+    #     df_raw = df_raw.rename(columns={"air_temp_AC": "air_temperature"})
+    # else:
+    #     raise ValueError("No air temperature column found in IAGOS data")
+
+    df_raw = df_raw.rename(columns={"air_temp_AC": "air_temperature"})
 
     # Standardize column names
     df_raw = df_raw.rename(columns={

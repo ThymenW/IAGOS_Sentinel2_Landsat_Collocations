@@ -1,3 +1,4 @@
+from matplotlib.pyplot import show
 import xarray as xr
 import pandas as pd
 import numpy as np
@@ -7,6 +8,7 @@ from pycontrails.models.ps_model import PSFlight
 from pycontrails.ext.bada import BADAFlight
 
 from iagos_toolkit.weather.iagos import create_met_from_iagos
+from iagos_toolkit.weather.era5 import create_met_from_era5
 from iagos_toolkit.flight.iagos_fleet import AIRCRAFT_PARS
 
 BADA4_PATH = "/Users/twoldhuis1/Documents/BADA 4.2 pycontrails"
@@ -121,6 +123,7 @@ def create_flight_from_iagos(
     # Select altitude source
     if "gps_alt_AC" in df.columns:
         altitude_col = "gps_alt_AC"
+        altitude_col = "baro_alt_AC"
     elif "baro_alt_AC" in df.columns:
         altitude_col = "baro_alt_AC"
     else:
@@ -255,25 +258,171 @@ def compute_aircraft_efficiency(
 
     return float(interpolated)
 
+
+def get_vertical_rate(flight: Flight, sensing_time: str | None = None) -> float | np.ndarray:
+    """
+    Calculate vertical speed (ft/min) from a pycontrails Flight object.
+
+    Parameters
+    ----------
+    flight : Flight
+        pycontrails Flight object with attributes .altitude (m) and .time (datetime-like)
+    sensing_time : str or None
+        If None, return vertical rate for all points.
+        If str, return vertical rate at that specific time.
+
+    Returns
+    -------
+    float or np.ndarray
+        Vertical rate(s) in ft/min.
+    """
+    alt_m = np.array(flight.altitude)          # meters
+    times = pd.to_datetime(flight.dataframe["time"])        # ensure datetime64
+
+    # Compute vertical rate (current - previous) / delta_time
+    delta_alt_m = np.diff(alt_m)              # m
+    delta_t_s = np.diff(times.values.astype("datetime64[s]")).astype(float)  # seconds
+
+    # Avoid division by zero
+    delta_t_s[delta_t_s == 0] = np.nan
+    vertical_rate_mps = delta_alt_m / delta_t_s  # m/s
+
+    # Convert to ft/min
+    vertical_rate_fpm = vertical_rate_mps * 196.850394
+
+    # For first point, set same as second (or NaN)
+    vertical_rate_fpm = np.insert(vertical_rate_fpm, 0, vertical_rate_fpm[0])
+
+    if sensing_time is not None:
+        t = pd.Timestamp(sensing_time).tz_localize(None)
+        # Find closest time index
+        idx = (np.abs(times - t)).argmin()
+        return vertical_rate_fpm[idx]
+    else:
+        return vertical_rate_fpm
+
+# def get_heading(flight, sensing_time: str | None = None) -> float | np.ndarray:
+#     """
+#     Calculate heading (degrees from north, clockwise) from a pycontrails Flight object.
+
+#     Parameters
+#     ----------
+#     flight : Flight
+#         pycontrails Flight object with attributes .altitude (m) and .time (datetime-like)
+#     sensing_time : str or None
+#         If None, return heading for all points.
+#         If str, return heading at that specific time.
+
+#     Returns
+#     -------
+#     float or np.ndarray
+#         Heading(s) in degrees from north, clockwise.
+#     """
+#     lats = np.radians(np.array(flight.latitude))
+#     lons = np.radians(np.array(flight.longitude))
+#     times = pd.to_datetime(flight.time)        # ensure datetime64
+
+#     # Compute vertical rate (current - previous) / delta_time
+#     delta_alt_m = np.diff(alt_m)              # m
+#     delta_t_s = np.diff(times.values.astype("datetime64[s]")).astype(float)  # seconds
+
+#     # Avoid division by zero
+#     delta_t_s[delta_t_s == 0] = np.nan
+#     vertical_rate_mps = delta_alt_m / delta_t_s  # m/s
+
+#     # Convert to ft/min
+#     vertical_rate_fpm = vertical_rate_mps * 196.850394
+
+#     # For first point, set same as second (or NaN)
+#     vertical_rate_fpm = np.insert(vertical_rate_fpm, 0, vertical_rate_fpm[0])
+
+#     if sensing_time is not None:
+#         t = pd.Timestamp(sensing_time).tz_localize(None)
+#         # Find closest time index
+#         idx = (np.abs(times - t)).argmin()
+#         return vertical_rate_fpm[idx]
+#     else:
+#         return vertical_rate_fpm
+
+
+def get_heading(nc_file, sensing_time):
+    """
+    Compute the aircraft heading (degrees from north, clockwise)
+    at the closest trajectory point to sensing_time.
+    """
+    ds = xr.open_dataset(nc_file)
+
+    # Trajectory times (already datetime64 → tz-naive)
+    times = pd.to_datetime(ds["UTC_time"].values)
+
+    # Input sensing_time → remove tz (convert to naive)
+    sensing_time = pd.to_datetime(sensing_time).tz_convert(None) if pd.to_datetime(sensing_time).tzinfo else pd.to_datetime(sensing_time)
+
+    # Find index closest to sensing_time
+    idx = np.argmin(np.abs(times - sensing_time))
+
+    # Need at least two points (before/after) to compute direction
+    if idx == 0 or idx == len(times) - 1:
+        return np.nan
+
+    # Coordinates before and after sensing_time
+    lat1, lon1 = float(ds["lat"].values[idx - 1]), float(ds["lon"].values[idx - 1])
+    lat2, lon2 = float(ds["lat"].values[idx + 1]), float(ds["lon"].values[idx + 1])
+
+    # Convert to radians
+    lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
+
+    # Formula for initial bearing
+    dlon = lon2 - lon1
+    x = np.sin(dlon) * np.cos(lat2)
+    y = np.cos(lat1) * np.sin(lat2) - np.sin(lat1) * np.cos(lat2) * np.cos(dlon)
+
+    bearing = np.degrees(np.arctan2(x, y))
+    heading = (bearing + 360) % 360  # normalize to [0, 360)
+
+    return heading
+
+
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
     # Example Usage
     iagos_file = "/Users/twoldhuis1/Documents/GitHub/iagos-sentinel2-dataset/data/intersects_sentinel/2019/2019011101212214_L1C_T50PRC_A009653_20190111T023626/IAGOS_timeseries_2019011101212214_L2_3.1.2.nc4"
+    era5_file = "/Users/twoldhuis1/Documents/GitHub/iagos-sentinel2-dataset/data/intersects_sentinel/2019/2019011101212214_L1C_T50PRC_A009653_20190111T023626/arco-era5.nc4"
     sensing_time= "2019-01-11 02:43:18.500000+00:00"
-    
+
+    iagos_file = "/Users/twoldhuis1/Documents/GitHub/iagos-sentinel2-dataset/data/intersects_landsat/2015/2015112209164904_LC80220212015326LGN01/IAGOS_timeseries_2015112209164904_L2_3.1.3.nc4"
+    era5_file = "/Users/twoldhuis1/Documents/GitHub/iagos-sentinel2-dataset/data/intersects_landsat/2015/2015112209164904_LC80220212015326LGN01/arco-era5.nc4"
+    sensing_time = "2015-11-22T16:25:01.488770Z"
+
+    iagos_file = "/Users/twoldhuis1/Documents/GitHub/iagos-sentinel2-dataset/data/intersects_landsat/2015/2015040710150303_LC82040242015097LGN01/IAGOS_timeseries_2015040710150303_L2_3.1.3.nc4"
+    era5_file = "/Users/twoldhuis1/Documents/GitHub/iagos-sentinel2-dataset/data/intersects_landsat/2015/2015040710150303_LC82040242015097LGN01/arco-era5.nc4"
+    sensing_time = "2015-04-07T11:10:11.976278Z"
+        
     icao24 = "8991BE"
     icao_code = AIRCRAFT_PARS.get(icao24, {}).get("icao_code", "A333")
     aircraft_type = AIRCRAFT_PARS.get(icao24, {}).get("airframe_type", "A343")
     engine_uid = AIRCRAFT_PARS.get(icao24, {}).get("engine_uid", None)
 
     met = create_met_from_iagos(iagos_file)
-    flight = create_flight_from_iagos(iagos_file, aircraft_type=icao_code, engine_uid=engine_uid, resample=True)
+    # met = create_met_from_era5(era5_file, extrapolate=sensing_time)
+    # met = None  # ISA
     
+    flight = create_flight_from_iagos(iagos_file, aircraft_type=icao_code, engine_uid=engine_uid, resample=True)
+    print(flight)
+    print(met)
+
+    # plt.plot(flight.dataframe["time"], flight.altitude)
+    # plt.show()
+
+    plt.plot(met.data["time"], met.data["air_temperature"].sel(level=500, longitude=0, latitude=0, method="nearest"))
+    plt.show()
+
     eff_ps = compute_aircraft_efficiency(flight, met=met, apm="PS")
     eff_bada = compute_aircraft_efficiency(flight, met=met, apm="BADA4")
 
     eff_ps_val = compute_aircraft_efficiency(flight, met=met, apm="PS", sensing_time=sensing_time)
     eff_bada_val = compute_aircraft_efficiency(flight, met=met, apm="BADA4", sensing_time=sensing_time)
-    import matplotlib.pyplot as plt
     plt.plot(eff_ps.index, eff_ps.values, label="PS", color="blue")
     plt.plot(eff_bada.index, eff_bada.values, label="BADA4", color="orange")
     plt.vlines(pd.to_datetime(sensing_time), ymin=0, ymax=0.5, color="green", linestyles="dashed", label="Sensing time")

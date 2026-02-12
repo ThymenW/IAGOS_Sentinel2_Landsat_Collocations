@@ -40,14 +40,16 @@ def download_arco_era5_data(
     xarray.Dataset
         Loaded ERA5 dataset.
     """
-    sensing_time = pd.Timestamp(sensing_time).tz_convert(None)
+    sensing_time = pd.Timestamp(sensing_time).tz_localize(None)
 
     hour_before = sensing_time.replace(minute=0, second=0, microsecond=0)
     hour_after = hour_before + timedelta(hours=1)
 
     # Convert altitude → pressure → pressure level
-    target_pressure_pa = get_p_ISA(air_pressure)
+    target_pressure_pa = air_pressure
     target_pressure_hpa = round(target_pressure_pa / 100)
+
+    print(target_pressure_hpa)
 
     # Load ERA5 model level table
     model_level_path = (
@@ -59,6 +61,8 @@ def download_arco_era5_data(
     above = model_level_df[model_level_df["pf [hPa]"] >= target_pressure_hpa].iloc[0]
     below = model_level_df[model_level_df["pf [hPa]"] < target_pressure_hpa].iloc[-1]
 
+    print(above)
+    print(below)
     pressure_levels = [
         round(above["pf [hPa]"]),
         round(below["pf [hPa]"]),
@@ -180,7 +184,7 @@ def get_arco_era5_data(
     return result
 
 
-def create_met_from_era5(era5_path: str, max_altitude: float = None, min_altitude: float = None, extrapolate_time: float = 0) -> MetDataset:
+def create_met_from_era5(era5_path: str, extrapolate_time: str = None) -> MetDataset:
     # Load ERA5 meteorological dataset
     era5_data = xr.open_dataset(era5_path)
 
@@ -216,6 +220,71 @@ def create_met_from_era5(era5_path: str, max_altitude: float = None, min_altitud
     # Wrap ERA5 data in a MetDataset object
     return MetDataset(era5_data)
 
+
+def create_met_from_era5(
+    era5_path: str,
+    extrapolate: str | None = None,
+    min_altitude: float = 1000,
+    max_altitude: float = 15000
+) -> "MetDataset":
+    """
+    Load ERA5 dataset and optionally extrapolate in time and altitude.
+
+    Parameters
+    ----------
+    era5_path : str
+        Path to ERA5 NetCDF file.
+    extrapolate : str or None
+        If None: no extrapolation.
+        If a timestamp string: extrapolate to the nearest hour before/after depending on minute.
+    min_altitude : float
+        Minimum altitude (m) to interpolate/extrapolate to.
+    max_altitude : float
+        Maximum altitude (m) to interpolate/extrapolate to.
+
+    Returns
+    -------
+    MetDataset
+        Meteorological dataset wrapped in MetDataset.
+    """
+    # Load ERA5 data
+    era5_data = xr.open_dataset(era5_path)
+
+    # Extrapolate altitude to 0-15000 m
+    # Convert altitudes to pressure levels (hPa) using ISA
+    min_pressure = round(get_p_ISA(max_altitude) / 100) - 1
+    max_pressure = round(get_p_ISA(min_altitude) / 100) + 1
+
+    existing_levels = era5_data.level.values
+    new_levels = np.unique(np.append(existing_levels, [min_pressure, max_pressure]))
+    new_levels.sort()
+    era5_data = era5_data.interp(level=new_levels, method="linear", kwargs={"fill_value": "extrapolate"})
+
+    # Extrapolate time if requested
+    if extrapolate is not None:
+        target_timestamp = pd.to_datetime(extrapolate)
+        minute = target_timestamp.minute
+
+        if minute >= 55:
+            extr = 1  # next hour
+        elif minute < 5:
+            extr = -1  # previous hour
+        else:
+            extr = 0  # no extrapolation needed
+
+        if extr != 0:
+            delta = timedelta(hours=extr)
+            times = era5_data.time.values
+
+            if extr < 0:
+                new_times = np.append([times[0] - np.timedelta64(delta)], times)
+            else:
+                new_times = np.append(times, [times[-1] + np.timedelta64(delta)])
+
+            new_times = np.sort(np.unique(new_times))
+            era5_data = era5_data.interp(time=new_times, method="linear", kwargs={"fill_value": "extrapolate"})
+
+    return MetDataset(era5_data)
 
 if __name__ == "__main__":
     # Example usage
