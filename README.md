@@ -12,15 +12,14 @@ The study focuses on observing the formation and early evolution of contrails pr
 
 ## Data
 
-The raw data, including satellite images, annotations, IAGOS measurements, and ERA5 data, can be found at *(add link to zenodo data)*.  
+The full dataset, including satellite images, annotations, full IAGOS measurements, and ERA5 data, can be found at *(add link to zenodo data)*.  
 
-For reproducing the final results without the need for raw satellite data or alterations, you can use the local CSV file: *(add file)*
-
+In addition to the raw data, I made it possible to reproduce the final results of the paper without the need for the full dataset. However, some figures will not be rendered without the full dataset. See the local CSV file: [data/landsat_sentinel_collocations_20260212.csv](data/landsat_sentinel_collocations_20260212.csv).
 
 ## Code
 
 - **Figure reproduction:**  
-  Code to reproduce the figures from the paper is located in: [notebooks/paper_reproduction](notebooks/paper_reproduction)
+  Code to reproduce the figures from the paper is located in: [notebooks/paper_reproduction](notebooks/paper_reproduction), with the figures being saved in [notebooks/paper_reproduction/figures](notebooks/paper_reproduction/figures)
 
 ## Adding New Satellite Collocations
 

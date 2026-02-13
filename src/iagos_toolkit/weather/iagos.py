@@ -77,6 +77,72 @@ def get_iagos_measurements(
     return result
 
 
+def get_iagos_measurements_at_location(
+    iagos_file_path: str,
+    longitude: float,
+    latitude: float
+) -> dict | None:
+    """
+    Extract IAGOS measurements at the point closest to a given longitude and latitude.
+
+    Parameters
+    ----------
+    iagos_file_path : str
+        Path to the IAGOS NetCDF file.
+    longitude : float
+        Target longitude in degrees (WGS84).
+    latitude : float
+        Target latitude in degrees (WGS84).
+
+    Returns
+    -------
+    dict or None
+        Dictionary mapping variable names to values at the closest point.
+        Missing values are returned as None.
+        Returns None if the file is invalid or coordinates are missing.
+    """
+    try:
+        ds = xr.open_dataset(iagos_file_path)
+    except Exception:
+        return None
+
+    # Must have coordinates
+    if "lat" not in ds.coords or "lon" not in ds.coords:
+        return None
+
+    # Compute distance squared to all points
+    lons = ds["lon"].values
+    lats = ds["lat"].values
+    dist2 = (lons - longitude)**2 + (lats - latitude)**2
+
+    # Find the index of the closest point
+    idx = np.unravel_index(np.argmin(dist2), dist2.shape)
+
+    # Extract values at that index
+    result: dict[str, float | None] = {}
+
+    for var in ds.data_vars:
+        value = ds[var].isel(**{dim: idx_dim for dim, idx_dim in zip(ds[var].dims, idx)})
+        # Convert to Python scalar
+        try:
+            value = value.item()
+        except Exception:
+            value = None
+        result[var] = None if _is_nan(value) else value
+
+    # Include coordinates
+    for coord in ("lat", "lon", "baro_alt_AC"):
+        if coord in ds.coords:
+            value = ds[coord].isel(**{dim: idx_dim for dim, idx_dim in zip(ds[coord].dims, idx)})
+            try:
+                value = value.item()
+            except Exception:
+                value = None
+            result[coord] = None if _is_nan(value) else value
+
+    return result
+
+
 def _is_nan(value) -> bool:
     """Return True if value is a NaN float."""
     return isinstance(value, float) and math.isnan(value)

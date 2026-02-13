@@ -208,3 +208,5 @@ __marimo__/
 
 data/collocations/*
 data/contrail_evolution/*
+data/figure_2_adsb/**.csv
+!data/figure_2_adsb/figure_2_adsb_collocations.csv
