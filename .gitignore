@@ -210,14 +210,7 @@ data/collocations/*
 
 data/figure_2_adsb/**.csv
 !data/figure_2_adsb/figure_2_adsb_collocations.csv
+!data/figure_2_adsb/landsat-figure2.csv
+
 data/contrail_evolution/annotations/
 data/contrail_evolution/cocip/
-
-# !data/contrail_evolution/annotations/L1C_T25SDD_A032496_20210911T131028.json
-# !data/contrail_evolution/annotations/L1C_T52SGA_A010625_20190320T014650.json
-# !data/contrail_evolution/annotations/L1C_T31UDQ_A020383_20210130T105205.json
-# !data/contrail_evolution/cocip/L1C_T25SDD_A032496_20210911T131028_rh_variable.csv
-# !data/contrail_evolution/cocip/L1C_T52SGA_A010625_20190320T014650_rh_variable.csv
-# !data/contrail_evolution/cocip/L1C_T31UDQ_A020383_20210130T105205_rh_variable.csv
-
-
