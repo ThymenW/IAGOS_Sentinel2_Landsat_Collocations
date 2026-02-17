@@ -214,3 +214,5 @@ data/figure_2_adsb/**.csv
 
 data/contrail_evolution/annotations/
 data/contrail_evolution/cocip/
+
+.DS_Store
