@@ -6,7 +6,6 @@ import xarray as xr
 from pycontrails import MetDataset
 
 
-
 def get_iagos_measurements(
     iagos_file_path: str,
     sensing_time,
@@ -84,6 +83,7 @@ def get_iagos_measurements_at_location(
 ) -> dict | None:
     """
     Extract IAGOS measurements at the point closest to a given longitude and latitude.
+    First interpolates the trajectory from ~4s resolution to 0.1s resolution in time.
 
     Parameters
     ----------
@@ -106,41 +106,77 @@ def get_iagos_measurements_at_location(
     except Exception:
         return None
 
-    # Must have coordinates
-    if "lat" not in ds.coords or "lon" not in ds.coords:
+    # Must have required coordinates
+    if "lat" not in ds.coords or "lon" not in ds.coords or "UTC_time" not in ds.coords:
         return None
 
-    # Compute distance squared to all points
+    # Ensure time is sorted (required for interpolation)
+    ds = ds.sortby("UTC_time")
+
+    # Filter valid coordinate ranges BEFORE interpolation
     lons = ds["lon"].values
     lats = ds["lat"].values
-    dist2 = (lons - longitude)**2 + (lats - latitude)**2
 
-    # Find the index of the closest point
-    idx = np.unravel_index(np.argmin(dist2), dist2.shape)
+    valid_mask = (
+        np.isfinite(lons) &
+        np.isfinite(lats) &
+        (lons >= -180) & (lons <= 180) &
+        (lats >= -90) & (lats <= 90)
+    )
+
+    if not np.any(valid_mask):
+        return None
+
+    dim = ds["lon"].dims[0]
+    ds = ds.isel({dim: valid_mask})
+
+    # Drop duplicate timestamps (can break interpolation)
+    _, unique_idx = np.unique(ds["UTC_time"].values, return_index=True)
+    ds = ds.isel({dim: unique_idx})
+
+    # Create high-resolution time grid (0.1 seconds)
+    time_start = ds["UTC_time"].values[0]
+    time_end = ds["UTC_time"].values[-1]
+    new_time = np.arange(
+        time_start,
+        time_end + np.timedelta64(100, "ms"),
+        np.timedelta64(100, "ms")
+    )
+
+    # Interpolate along time dimension
+    ds_interp = ds.interp(UTC_time=new_time, method="linear")
+
+    # Extract interpolated lat/lon
+    lons_interp = ds_interp["lon"].values
+    lats_interp = ds_interp["lat"].values
+
+    # Compute distance squared to all interpolated points
+    dist2 = (lons_interp - longitude) ** 2 + (lats_interp - latitude) ** 2
+
+    # Find closest point in interpolated trajectory
+    idx = int(np.argmin(dist2))
 
     # Extract values at that index
     result: dict[str, float | None] = {}
 
-    for var in ds.data_vars:
-        value = ds[var].isel(**{dim: idx_dim for dim, idx_dim in zip(ds[var].dims, idx)})
-        # Convert to Python scalar
+    for var in ds_interp.data_vars:
         try:
-            value = value.item()
+            value = ds_interp[var].isel(UTC_time=idx).item()
         except Exception:
             value = None
         result[var] = None if _is_nan(value) else value
 
-    # Include coordinates
-    for coord in ("lat", "lon", "baro_alt_AC"):
-        if coord in ds.coords:
-            value = ds[coord].isel(**{dim: idx_dim for dim, idx_dim in zip(ds[coord].dims, idx)})
+    # Include key coordinates
+    for coord in ("UTC_time", "lat", "lon", "baro_alt_AC"):
+        if coord in ds_interp:
             try:
-                value = value.item()
+                value = ds_interp[coord].isel(UTC_time=idx).item()
             except Exception:
                 value = None
             result[coord] = None if _is_nan(value) else value
 
     return result
+
 
 
 def _is_nan(value) -> bool:

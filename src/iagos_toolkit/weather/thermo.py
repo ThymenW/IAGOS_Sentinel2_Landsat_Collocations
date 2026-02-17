@@ -1,5 +1,6 @@
 import numpy as np
 
+import iagos_toolkit.weather.constants as constants
 
 # Saturation over liquid water (Buck, 1981)
 COEFFS_WATER_BUCK = {
@@ -14,28 +15,6 @@ COEFFS_ICE_ALDUCHOV = {
     'a3': 22.587,
     'a4': -0.7     # K
 }
-
-#: Absolute zero value :math:`[C]`
-absolute_zero: float = -273.16
-T0 = -1 * absolute_zero  # 273.15 K
-
-#: Gas constant of dry air :math:`[J \ kg^{-1} \ K^{-1}]`
-R_d: float = 287.05
-
-#: Gas constant of water vapour :math:`[J \ kg^{-1} \ K^{-1}]`
-R_v: float = 461.51
-
-#: Ratio of gas constant for dry air / gas constant for water vapor
-epsilon: float = R_d / R_v
-
-#: Isobaric heat capacity of dry air :math:`[J \ kg^{-1} \ K^{-1}]`
-c_pd: float = 1004.0  # 1005.7?
-
-#: Isobaric heat capacity of water vapor :math:`[J \ kg^{-1} \ K^{-1}]`
-c_pv: float = 1870.0
-
-#: Isobaric heat capacity
-c_pm: float = 1004
 
 
 def calc_rh_from_specific_humidity(q, T, P):
@@ -58,7 +37,7 @@ def calc_rh_from_specific_humidity(q, T, P):
 
     """
     e_sat = saturation_vapor_pressure_era5(T, COEFFS_WATER_BUCK)
-    return (q * P * R_v / R_d) / e_sat
+    return (q * P * constants.R_v / constants.R_d) / e_sat
 
 
 def calc_rhi_from_specific_humidity(q, T, P):
@@ -81,7 +60,7 @@ def calc_rhi_from_specific_humidity(q, T, P):
 
     """
     e_sat = saturation_vapor_pressure_era5(T, COEFFS_ICE_ALDUCHOV)
-    return (q * P * R_v / R_d) / e_sat
+    return (q * P * constants.R_v / constants.R_d) / e_sat
 
 
 def saturation_vapor_pressure(T, coeffs):
@@ -121,5 +100,4 @@ def saturation_vapor_pressure_era5(T, coeffs):
     a3 = coeffs['a3']
     a4 = coeffs['a4']
 
-    return a1 * np.exp(a3 * (T - T0) / (T - a4))
-
+    return a1 * np.exp(a3 * (T - constants.T0) / (T - a4))

@@ -19,8 +19,16 @@ In addition to the raw data, I made it possible to reproduce most of the final r
 
 ## Usage
 
-The code to reproduce the figures in the paper are located in [notebooks/paper_reproduction](notebooks/paper_reproduction), with the figures being saved in [notebooks/paper_reproduction/figures](notebooks/paper_reproduction/figures). Most figures can be recreated without the full dataset. For the others, first download the full dataset.
+### Reproducing the figures from the paper
+The code to reproduce the figures in the paper are located in [notebooks/paper_reproduction](notebooks/paper_reproduction), with the figures being saved in [notebooks/paper_reproduction/figures](notebooks/paper_reproduction/figures). Most figures can be recreated without the full dataset. For the others, first download the full dataset at [4TU Research Portal](https://doi.org/10.4121/2d66d65e-8041-4435-ab3c-0af3fdfc5d23). 
 
+Note: for employees of TU Delft, I can invite you to the U:drive with the dataset. Please send me a message in that case. Change `DATASET_LOCATION` in all notebooks to:
+
+```python
+DATASET_LOCATION = "/Volumes/staff-umbrella/IagosSentinelColocations/data"
+```
+
+### Further analysis
 To experiment with the data there are some notebooks given in [notebooks](notebooks/). 
 *note: not added yet*
 

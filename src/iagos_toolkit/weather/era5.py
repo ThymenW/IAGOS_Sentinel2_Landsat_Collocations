@@ -10,8 +10,7 @@ import pycontrails
 from pycontrails import MetDataset
 from pycontrails.datalib.ecmwf import ERA5ARCO
 
-from comop.meteo.isa import get_p_ISA
-
+from iagos_toolkit.weather.isa import get_p_ISA
 from iagos_toolkit.weather.thermo import calc_rh_from_specific_humidity, calc_rhi_from_specific_humidity
 
 
