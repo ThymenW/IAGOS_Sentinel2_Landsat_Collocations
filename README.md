@@ -25,7 +25,7 @@ The code to reproduce the figures in the paper are located in [notebooks/paper_r
 Note: for employees of TU Delft, I can invite you to the U:drive with the dataset. Please send me a message in that case. Change `DATASET_LOCATION` in all notebooks to:
 
 ```python
-DATASET_LOCATION = "/Volumes/staff-umbrella/IagosSentinelColocations/data"
+DATASET_LOCATION = "/Volumes/staff-umbrella/IagosSentinelColocations/data/collocations"
 ```
 
 ### Further analysis

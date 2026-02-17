@@ -1,4 +1,7 @@
+from typing import Union
+
 import numpy as np
+import xarray as xr
 
 import iagos_toolkit.weather.constants as constants
 
@@ -101,3 +104,110 @@ def saturation_vapor_pressure_era5(T, coeffs):
     a4 = coeffs['a4']
 
     return a1 * np.exp(a3 * (T - constants.T0) / (T - a4))
+
+
+def goff_gratch_water(T: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    """
+    Calculates saturation vapor pressure over water.
+    Source: Goff and Gratch (1946) adapted to ITS-90
+    in Sonntag (1994).
+
+    Used in MOZAIC.
+    
+    Parameters
+    ----------
+    T : float or numpy array
+        Temperature in Kelvin
+    
+    Outputs
+    -------
+    ew : float or numpy array
+        Saturation vapor pressure over water in Pa
+    """
+    exponent = (-6096.9385/T 
+                + 16.635794 
+                - (2.711193e-2)*T
+                + (1.673952e-5)*T**2
+                + 2.433502 * np.log(T))
+                
+    return 100*np.exp(exponent)
+
+
+def goff_gratch_ice(T: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    """
+    Calculates saturation vapor pressure overice.
+    Source: https://www.eas.ualberta.ca/jdwilson/EAS372_13/Vomel_CIRES_satvpformulae.html
+    
+    Used in MOZAIC. 
+    
+    Parameters
+    ----------
+    T : float or numpy array
+        Temperature in Kelvin
+    
+    Outputs
+    -------
+    ei : float or numpy array
+        Saturation vapor pressure over ice in Pa
+    """
+    exponent = np.log(10)*(-9.09718*(273.16/T -1)
+                - 3.56664*np.log10(273.16/T)
+                + 0.876739*(1-T/273.16)
+                + np.log10(6.1071)
+                  )
+
+    return 100 * np.exp(exponent)
+
+
+def get_T_LM(G : Union[np.ndarray, xr.DataArray]) -> np.ndarray:
+    """ 
+    Computes the T_LM temperature from Schumann (1996)
+    which is used in the computation of the Schmidt-
+    Appleman criterion.
+    
+    Parameters
+    ----------
+    G : numpy array
+        Mixing line gradient in Pa/K
+    
+    Outputs 
+    -------
+    T_LM : numpy array
+        Temperature in Kelvin 
+    """ 
+    # If G <= 0.053, the approximation does not work. 
+
+    T_LM = 273.15-46.46 + 9.43*np.log(G-0.053) + 0.720*(np.log(G-0.053))**2
+
+    return T_LM
+
+
+def get_mixing_line_gradient_from_LHV(pressure: Union[float, np.ndarray],
+    epsilon: float=0.622, EI_H2O: float=1.23, LHV: float=42e6, cp: float=constants.c_p,
+             eta: float=0.4) -> Union[float, np.ndarray]:
+    """
+    Computes the mixing line gradient based on lower heating value (LHV) of the used fuel. See Schumann (1996) for a 
+    derivation. 
+
+    Parameters
+    ----------
+    pressure: float or numpy array
+        Pressure in Pa
+    epsilon: float 
+        Ratio of molar mass of water to air 
+    EI_H2O: float
+        Emissions index of water for the fuel used 
+    LHV: float
+        Lower heating value of fuel in J/kg
+    cp: float
+        Specific heat of air in J/(Kg*K)
+    eta: float
+        Efficiency of aircraft 
+
+    Outputs
+    -------
+    G: numpy array or float
+        Mixing line gradient in Pa/K
+    """
+
+    return (cp*pressure/epsilon)*(EI_H2O/(LHV*(1-eta)))
