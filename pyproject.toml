@@ -9,10 +9,7 @@ description = "IAGOS satellite and aircraft collocation toolkit"
 requires-python = ">=3.9"
 
 dependencies = [
-    "numpy",
-    "xarray",
-    "netcdf4",
-    "pandas",
+    "pycontrails[complete]"
 ]
 
 [tool.setuptools]
