@@ -216,3 +216,5 @@ data/contrail_evolution/annotations/
 data/contrail_evolution/cocip/
 
 .DS_Store
+data/aircraft_chips/
+data/contrail_chips/

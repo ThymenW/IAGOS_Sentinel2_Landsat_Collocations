@@ -87,6 +87,7 @@ The `./notebooks/` folder contains several Jupyter notebooks that reproduce the 
 | `figure_5.ipynb` | Example of contrail formed from Schmidt-Appleman Criterion (SAC) conditions |
 | `figure_6.ipynb` | Collocations as a function of altitude and T_LC |
 | `figure_7.ipynb` | Contrail lifetime |
+| `figure_7_dry_advection.ipynb` | Contrail lifetime from a Lagrangian `DryAdvection` run of the flight, stopped at the satellite sensing time; recreates figure 7 and analyses the temperature dependence of the IAGOS humidity uncertainty |
 | `figure_8.ipynb` | Contrail evolution in jet and vortex phase |
 | `figure_9.ipynb` | Comparison between Contrail Cirrus Prediction (CoCiP) results and Annotations |
 

@@ -12314,5 +12314,10 @@
   "total_length": 252811.41596075217,
   "total_age": 1245.376433304198,
   "scene_id": "L1C_T52SGA_A010625_20190320T014650",
-  "out_of_frame": 0
+  "out_of_frame": 0,
+  "temp_iagos_oldest": 220.94000244140625,
+  "rhl_iagos_oldest": 0.5989999771118164,
+  "air_pressure_iagos_oldest": 22760.0,
+  "dtlc_iagos_oldest": -3.273518549047168,
+  "oldest_time": "2019-03-20T01:37:50.623566000"
 }

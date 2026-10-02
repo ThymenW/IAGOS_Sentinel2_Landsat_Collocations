@@ -11924,5 +11924,10 @@
   "total_length": 236961.53179534484,
   "total_age": 914.9093891712156,
   "scene_id": "L1C_T25SDD_A032496_20210911T131028",
-  "out_of_frame": 1
+  "out_of_frame": 1,
+  "temp_iagos_oldest": 228.4199981689453,
+  "rhl_iagos_oldest": 0.6620000004768372,
+  "air_pressure_iagos_oldest": 24970.0,
+  "dtlc_iagos_oldest": 2.8669592840597318,
+  "oldest_time": "2021-09-11T12:55:56.823610000"
 }

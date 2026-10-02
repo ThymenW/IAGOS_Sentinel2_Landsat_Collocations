@@ -10834,5 +10834,10 @@
   "total_length": 212724.3514004108,
   "total_age": 984.834960187087,
   "scene_id": "L1C_T31UDQ_A020383_20210130T105205",
-  "out_of_frame": 1
+  "out_of_frame": 1,
+  "temp_iagos_oldest": 220.55999755859375,
+  "rhl_iagos_oldest": 0.7590000033378601,
+  "air_pressure_iagos_oldest": 27530.0,
+  "dtlc_iagos_oldest": -6.8100849360104405,
+  "oldest_time": "2021-01-30T10:41:03.314039000"
 }
